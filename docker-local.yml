@@ -1,0 +1,120 @@
+---
+services:
+  opencloud:
+    image: opencloudeu/opencloud-rolling:2.3.0
+    # changelog: https://github.com/opencloud-eu/opencloud/tree/main/changelog
+    # release notes: https://docs.opencloud.eu/opencloud_release_notes.html
+    networks:
+      opencloud-net:
+    entrypoint:
+      - /bin/sh
+    # run opencloud init to initialize a configuration file with random secrets
+    # it will fail on subsequent runs, because the config file already exists
+    # therefore we ignore the error and then start the opencloud server
+    command: ["-c", "opencloud init || true; opencloud server"]
+    environment:
+      # enable services that are not started automatically
+      OC_ADD_RUN_SERVICES: "notifications"
+      OC_URL: https://cloud.opencloud.test
+      OC_LOG_LEVEL: info
+      OC_LOG_COLOR: "true"
+      OC_LOG_PRETTY: "true"
+      # do not use SSL between the reverse proxy and OpenCloud
+      PROXY_TLS: "false"
+      # INSECURE: needed if OpenCloud / reverse proxy is using self generated certificates
+      OC_INSECURE: "true"
+      # basic auth (not recommended, but needed for eg. WebDav clients that do not support OpenID Connect)
+      PROXY_ENABLE_BASIC_AUTH: "false"
+      # admin user password
+      IDM_ADMIN_PASSWORD: "admin" # this overrides the admin password from the configuration file
+      # demo users
+      IDM_CREATE_DEMO_USERS: "false"
+      # email server (if configured)
+      NOTIFICATIONS_SMTP_HOST: ""
+      NOTIFICATIONS_SMTP_PORT: ""
+      NOTIFICATIONS_SMTP_SENDER: "OpenCloud notifications <notifications@cloud.opencloud.test>"
+      NOTIFICATIONS_SMTP_USERNAME: ""
+      NOTIFICATIONS_SMTP_PASSWORD: ""
+      NOTIFICATIONS_SMTP_INSECURE: ""
+      NOTIFICATIONS_SMTP_AUTHENTICATION: ""
+      NOTIFICATIONS_SMTP_ENCRYPTION: "none"
+      FRONTEND_ARCHIVER_MAX_SIZE: "10000000000"
+      PROXY_CSP_CONFIG_FILE_LOCATION: /etc/opencloud/csp.yaml
+      # enable to allow using the banned passwords list
+      OC_PASSWORD_POLICY_BANNED_PASSWORDS_LIST: banned-password-list.txt
+    volumes:
+      - ./config/opencloud/csp.yaml:/etc/opencloud/csp.yaml
+      - ./config/opencloud/banned-password-list.txt:/etc/opencloud/banned-password-list.txt
+      # configure the .env file to use own paths instead of docker internal volumes
+      # - ${OC_CONFIG_DIR:-opencloud-config}:/etc/opencloud
+      # - ${OC_DATA_DIR:-opencloud-data}:/var/lib/opencloud
+      - ./config/opencloud/apps:/var/lib/opencloud/web/assets/apps
+    # logging:
+    #   driver: ${LOG_DRIVER:-local}
+    # restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.opencloud.entrypoints=https"
+      - "traefik.http.routers.opencloud.rule=Host(`cloud.opencloud.test`)"
+      - "traefik.http.routers.opencloud.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.opencloud.service=opencloud"
+      - "traefik.http.services.opencloud.loadbalancer.server.port=9200"
+  traefik:
+    image: traefik:v3.3.1
+    # release notes: https://github.com/traefik/traefik/releases
+    networks:
+      opencloud-net:
+        aliases:
+          - cloud.opencloud.test
+    command:
+      - "--log.level=ERROR"
+      # letsencrypt configuration
+      - "--certificatesResolvers.letsencrypt.acme.email=example@example.org"
+      - "--certificatesResolvers.letsencrypt.acme.storage=/certs/acme.json"
+      - "--certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint=http"
+      - "--certificatesResolvers.letsencrypt.acme.caserver=https://acme-v02.api.letsencrypt.org/directory"
+      # enable dashboard
+      - "--api.dashboard=true"
+      # define entrypoints
+      - "--entryPoints.http.address=:80"
+      - "--entryPoints.http.http.redirections.entryPoint.to=https"
+      - "--entryPoints.http.http.redirections.entryPoint.scheme=https"
+      - "--entryPoints.https.address=:443"
+      # change default timeouts for long-running requests
+      # this is needed for webdav clients that do not support the TUS protocol
+      - "--entryPoints.https.transport.respondingTimeouts.readTimeout=12h"
+      - "--entryPoints.https.transport.respondingTimeouts.writeTimeout=12h"
+      - "--entryPoints.https.transport.respondingTimeouts.idleTimeout=3m"
+      # docker provider (get configuration from container labels)
+      - "--providers.docker.endpoint=unix:///var/run/docker.sock"
+      - "--providers.docker.exposedByDefault=false"
+      # access log
+      - "--accessLog=true"
+      - "--accessLog.format=json"
+      - "--accessLog.fields.headers.names.X-Request-Id=keep"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      # - "certs:/certs"
+    labels:
+      - "traefik.enable=false"
+      # defaults to admin:admin
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=admin:$$apr1$$4vqie50r$$YQAmQdtmz5n9rEALhxJ4l."
+      - "traefik.http.routers.traefik.entrypoints=https"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.opencloud.test`)"
+      - "traefik.http.routers.traefik.middlewares=traefik-auth"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.service=api@internal"
+    # logging:
+    #   driver: ${LOG_DRIVER:-local}
+    # restart: always
+
+# volumes:
+#   opencloud-config:
+#   opencloud-data:
+#   certs:
+
+networks:
+  opencloud-net:

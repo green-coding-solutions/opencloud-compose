@@ -1,0 +1,30 @@
+---
+name: Own Cloud Usage
+author: Didi Hoffmann <didi@green-coding.io>
+description: A test to see if the Owncloud will load in the GMT
+
+compose-file: !include docker-compose.yml
+
+services:
+  gcb-playwright:
+    image: greencoding/gcb_playwright:v14
+    # depends_on:
+    #   nc:
+    #     condition: service_healthy
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix # for debugging in non-headless mode
+    environment:
+       DISPLAY: ":0" # for debugging in non-headless mode
+    networks:
+      opencloud-net:
+
+flow:
+  - name: Install
+    container: gcb-playwright
+    commands:
+      - type: console
+        command: sleep 10
+        note: Simple test
+        read-notes-stdout: true
+        log-stdout: true
+        log-stderr: true
