@@ -1,10 +1,10 @@
-import contextlib
-import hashlib
-import os
-import shutil
-import sys
-import tempfile
-from time import time_ns, sleep
+# - Bilder-Verwaltung
+#     - Anlegen eines neuen Spaces inkl. Beschreibung
+#     - Hochladen von 10 Bildern
+#     - Vorschau (Preview-Service) der Bilder
+#         - Implizit: Search Indexing with Tika
+#     - Löschen aller Dateien - Leeren des Papierkorbs
+
 import signal
 import random
 import string
@@ -22,8 +22,8 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
     if browser_name == "firefox":
         browser = playwright.firefox.launch(headless=False)
 
-    else:
-        browser = playwright.chromium.launch(headless=False, downloads_path=download_path, args=['--disable-gpu', '--disable-software-rasterizer', '--ozone-platform=wayland'])
+    # else:
+    #     browser = playwright.chromium.launch(headless=False, downloads_path=download_path, args=['--disable-gpu', '--disable-software-rasterizer', '--ozone-platform=wayland'])
 
     context = browser.new_context(ignore_https_errors=True)
     page = context.new_page()
@@ -36,7 +36,7 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
         login(page, domain=DOMAIN)
         user_sleep()
 
-        log_note("Create new space")
+        log_note("- Anlegen eines neuen Spaces inkl. Beschreibung")
         page.locator('#_appSwitcherButton').click()
 
         user_sleep()
@@ -64,7 +64,7 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
         page.wait_for_selector('[data-test-space-name="' + new_space_name + '"]')
         expect(page.locator('[data-test-space-name="' + new_space_name + '"]')).to_have_count(1)
 
-        log_note("Upload File")
+        log_note("- Hochladen von 10 Bildern ")
 
         page.locator('#_appSwitcherButton').click()
         page.wait_for_selector('a[data-test-id="app.files.menuItem"]')
@@ -118,16 +118,22 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
             file_chooser = fc_info.value
             file_chooser.set_files(all_file_payloads)
 
-        user_sleep()
+        user_sleep(5)
 
-        log_note("Waiting for all uploaded files to appear in the UI...")
-        for i in range(10):
-            resource_name_selector = f'span.oc-resource-name[data-test-resource-name="{random_filenames[i]}"]'
-            page.wait_for_selector(resource_name_selector, state='visible')
-            log_note(f"Confirmed visibility of uploaded file: {random_filenames[i]}")
+        page.get_by_role("button", name="Sort by name").click()
+
+        log_note("- Vorschau (Preview-Service) der Bilder")
+        for filename in sorted(random_filenames.values()):
+            locator = page.locator(
+                f'span.oc-resource-name[data-test-resource-name="{filename}"]'
+            )
+            locator.scroll_into_view_if_needed()
+            expect(locator).to_be_visible(timeout=5_000)
+
+            log_note(f"Confirmed visibility of uploaded file: {filename}")
 
 
-        log_note("Delete files")
+        log_note("- Löschen aller Dateien - Leeren des Papierkorbs")
 
         select_all_checkbox_selector = 'input#resource-table-select-all[type="checkbox"]'
         page.wait_for_selector(select_all_checkbox_selector, state='visible')
@@ -185,13 +191,13 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
 
 if __name__ == "__main__":
 
-    if len(sys.argv) > 1:
-        browser_name = sys.argv[1].lower()
-        if browser_name not in ["chromium", "firefox"]:
-            print("Invalid browser name. Please choose either 'chromium' or 'firefox'.")
-            sys.exit(1)
-    else:
-        browser_name = "firefox"
+    # if len(sys.argv) > 1:
+    #     browser_name = sys.argv[1].lower()
+    #     if browser_name not in ["chromium", "firefox"]:
+    #         print("Invalid browser name. Please choose either 'chromium' or 'firefox'.")
+    #         sys.exit(1)
+    # else:
+    #     browser_name = "firefox"
 
     with sync_playwright() as playwright:
-        run(playwright, browser_name)
+        run(playwright, "firefox")

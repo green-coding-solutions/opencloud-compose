@@ -1,10 +1,21 @@
-import contextlib
+# - File-Management
+#     - Anlegen eines neuen Nutzers (User #2)
+#     - Anlegen eines neuen Spaces
+#     - Hochladen einer großen Datei (> 1 GB) (z.B. Erstellung via cat /dev/random + hashing)
+#         - Zum Nachweise Effizienz durch PosixFS
+#         - Implizit: Search Indexing with Tika
+#     - Hochladen einer PDF-Datei "Moby Dick"
+#     - Sharen beider Dateien an weiteren User
+#     - Nutzen der Suchfunktion im Text der Dateien durch User #2 mit Begriff "Carpet"
+#         - Sicherstellung das Dokument gefunden wurde
+#     - Download beider Dateien durch User #2 
+#         - Validierung auf korrekten SHA-256 hash
+#     - Löschen aller Dateien - Leeren des Papierkorbs
+
+
 import hashlib
 import os
 import shutil
-import sys
-import tempfile
-from time import time_ns, sleep
 import signal
 import random
 import string
@@ -49,8 +60,8 @@ def second_user(playwright: Playwright, browser_name: str, headless=False) -> No
     log_note(f"Launch user2 browser {browser_name}")
     if browser_name == "firefox":
         browser = playwright.firefox.launch(headless=False)
-    else:
-        browser = playwright.chromium.launch(headless=False, downloads_path=download_path, args=['--disable-gpu', '--disable-software-rasterizer', '--ozone-platform=wayland'])
+    # else:
+    #     browser = playwright.chromium.launch(headless=False, downloads_path=download_path, args=['--disable-gpu', '--disable-software-rasterizer', '--ozone-platform=wayland'])
 
     context = browser.new_context(ignore_https_errors=True)
     page = context.new_page()
@@ -66,7 +77,7 @@ def second_user(playwright: Playwright, browser_name: str, headless=False) -> No
         login(page, domain=DOMAIN, username=USER2['username'], password=USER2['password'])
         user_sleep()
 
-        log_note("Searching")
+        log_note("- Nutzen der Suchfunktion im Text der Dateien durch User #2 mit Begriff Carpet")
         search_input_selector = 'div#files-global-search-bar input.oc-search-input'
         search_term = 'Carpet'
 
@@ -79,11 +90,12 @@ def second_user(playwright: Playwright, browser_name: str, headless=False) -> No
 
         page.press(search_input_selector, 'Enter')
 
+        log_note("- Sicherstellung das Dokument gefunden wurde")
         page.wait_for_selector('.oc-resource-details ', state='visible')
 
         user_sleep()
 
-        log_note("Downloading files")
+        log_note("- Download beider Dateien durch User #2 ")
 
         page.click('a[data-nav-name="files-shares"]')
 
@@ -114,7 +126,7 @@ def second_user(playwright: Playwright, browser_name: str, headless=False) -> No
                 calculated_hash = calculate_sha1(downloaded_large_file_path)
                 expected_hash = expected_hashes.get('largefile.bin')
                 if expected_hash and calculated_hash == expected_hash:
-                    log_note(f"Large file hash verified: {calculated_hash}")
+                    log_note(f"- Validierung auf korrekten SHA-256 hash: {calculated_hash}")
                 else:
                     raise ValueError(f"Large file hash mismatch! Expected: {expected_hash}, Got: {calculated_hash}")
             else:
@@ -196,7 +208,7 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
         login(page, domain=DOMAIN)
         user_sleep()
 
-        log_note("Create new user")
+        log_note("- Anlegen eines neuen Nutzers (User #2)")
 
         page.locator('#_appSwitcherButton').click()
 
@@ -228,7 +240,7 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
 
         user_sleep()
 
-        log_note("Create new space")
+        log_note("- Anlegen eines neuen Spaces")
 
         page.click('a[data-nav-name="admin-settings-spaces"]')
 
@@ -252,7 +264,7 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
         page.wait_for_selector('[data-test-space-name="' + new_space_name + '"]')
         expect(page.locator('[data-test-space-name="' + new_space_name + '"]')).to_have_count(1)
 
-        log_note("Upload File")
+        log_note("- Hochladen einer großen Datei")
 
         page.locator('#_appSwitcherButton').click()
         page.wait_for_selector('a[data-test-id="app.files.menuItem"]')
@@ -281,6 +293,8 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
         page.wait_for_selector('div.upload-info-label.upload-info-success:has-text("1 item uploaded")', state='visible')
         page.wait_for_selector('span.oc-resource-name[data-test-resource-name="' + LARGE_FILE_NAME + '"]')
 
+        log_note("- Hochladen einer PDF-Datei")
+
         page.wait_for_selector('button#upload-menu-btn')
         page.click('button#upload-menu-btn')
 
@@ -307,7 +321,7 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
 
         user_sleep()
 
-        log_note('Sharing files')
+        log_note('- Sharen beider Dateien an weiteren User ')
 
         moby_share_button_selector = (
             f'tr:has(span.oc-resource-name[data-test-resource-name="{MOBY_FILE_NAME}"]) '
@@ -364,7 +378,7 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
         second_user(playwright, browser_name, headless)
 
 
-        log_note("Delete files")
+        log_note("- Löschen aller Dateien - Leeren des Papierkorbs")
         context_menu_button_selector = (
             f'tr:has(span.oc-resource-name[data-test-resource-name="{LARGE_FILE_NAME}"]) '
             'button[aria-label="Show context menu"]'
@@ -440,13 +454,13 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
 
 if __name__ == "__main__":
 
-    if len(sys.argv) > 1:
-        browser_name = sys.argv[1].lower()
-        if browser_name not in ["chromium", "firefox"]:
-            print("Invalid browser name. Please choose either 'chromium' or 'firefox'.")
-            sys.exit(1)
-    else:
-        browser_name = "firefox"
+    # if len(sys.argv) > 1:
+    #     browser_name = sys.argv[1].lower()
+    #     if browser_name not in ["chromium", "firefox"]:
+    #         print("Invalid browser name. Please choose either 'chromium' or 'firefox'.")
+    #         sys.exit(1)
+    # else:
+    #     browser_name = "firefox"
 
     with sync_playwright() as playwright:
-        run(playwright, browser_name)
+        run(playwright, "firefox")

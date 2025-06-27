@@ -2,6 +2,7 @@
 name: Own Cloud Usage
 author: Didi Hoffmann <didi@green-coding.io>
 description: A test to see if the Owncloud will load in the GMT
+ignore-unsupported-compose: true
 
 compose-file: !include docker-compose.yml
 
@@ -18,13 +19,34 @@ services:
     networks:
       opencloud-net:
 
+  opencloud:
+    setup-commands:
+      - command: sleep 10
+  collabora:
+    setup-commands:
+      - command: sleep 10
+  traefik:
+    setup-commands:
+      - command: sleep 10
+
 flow:
-  - name: Install
+  - name: Bilder
     container: gcb-playwright
     commands:
       - type: console
-        command: sleep 10
-        note: Simple test
-        read-notes-stdout: true
-        log-stdout: true
-        log-stderr: true
+        command: python3 /tmp/repo/playwright/bilder.py
+  - name: Document
+    container: gcb-playwright
+    commands:
+      - type: console
+        command: python3 /tmp/repo/playwright/document.py
+  - name: File
+    container: gcb-playwright
+    commands:
+      - type: console
+        command: python3 /tmp/repo/playwright/file.py
+  - name: Text
+    container: gcb-playwright
+    commands:
+      - type: console
+        command: python3 /tmp/repo/playwright/text.py

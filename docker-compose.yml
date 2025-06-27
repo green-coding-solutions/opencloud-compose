@@ -1,219 +1,217 @@
----
+name: opencloud-compose
 services:
-  opencloud:
-    image: opencloudeu/opencloud-rolling:2.3.0
-    # changelog: https://github.com/opencloud-eu/opencloud/tree/main/changelog
-    # release notes: https://docs.opencloud.eu/opencloud_release_notes.html
+  collabora:
+    # cap_add:
+    #   - MKNOD
+    #command: /bin/bash -c "coolconfig generate-proof-key && /start-collabora-online.sh"
+    # entrypoint:
+    #   -
+    #   - -c
+    command:
+      - coolconfig generate-proof-key && /start-collabora-online.sh
+    entrypoint:
+      - /bin/bash
+      - -c
+    environment:
+      DONT_GEN_SSL_CERT: "YES"
+      aliasgroup1: https://wopiserver:443
+      extra_params: --o:ssl.enable=false --o:ssl.ssl_verification=false --o:ssl.termination=true --o:welcome.enable=false --o:net.frame_ancestors=opencloud
+      password: admin
+      username: admin
+    # I can't get this to work
+    # healthcheck:
+    #   test: "CMD bash -c \"exec 3<>/dev/tcp/127.0.0.1/9980 && printf 'GET /hosting/discovery HTTP/1.1\r\nHost: localhost:9980\r\n\r\n' >&3 && head -n 1 <&3 | grep '200 OK'\""
+    image: collabora/code:25.04.1.1.1@sha256:8a0523a5238c8e0c7ce1458543b45d731d253113489ffa35b77bb5d9470bccb3
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.collabora.entrypoints: https
+      traefik.http.routers.collabora.rule: Host(`collabora`)
+      traefik.http.routers.collabora.service: collabora
+      traefik.http.routers.collabora.tls.certresolver: letsencrypt
+      traefik.http.services.collabora.loadbalancer.server.port: "9980"
+    logging:
+      driver: local
     networks:
-      opencloud-net:
+      opencloud-net: null
+    restart: always
+  collaboration:
+#    command: /bin/sh -c "opencloud collaboration server"
+    command:
+      - -c
+      - opencloud collaboration server
     entrypoint:
       - /bin/sh
-    # run opencloud init to initialize a configuration file with random secrets
-    # it will fail on subsequent runs, because the config file already exists
-    # therefore we ignore the error and then start the opencloud server
-    command: ["-c", "opencloud init || true; opencloud server"]
+    depends_on:
+      collabora:
+        # Somehow the health check does not work in the GMT will need to debug later
+        #condition: service_healthy
+        condition: service_started
+        required: true
+      opencloud:
+        condition: service_started
+        required: true
+      traefik:
+        condition: service_started
+        required: true
+    #entrypoint: /bin/sh -c "opencloud collaboration server"
+    #   -
     environment:
-      # enable services that are not started automatically
-      OC_ADD_RUN_SERVICES: "notifications"
+      COLLABORATION_APP_ADDR: https://collabora
+      COLLABORATION_APP_ICON: https://collabora/favicon.ico
+      COLLABORATION_APP_INSECURE: "true"
+      COLLABORATION_APP_NAME: CollaboraOnline
+      COLLABORATION_APP_PRODUCT: Collabora
+      COLLABORATION_CS3API_DATAGATEWAY_INSECURE: "true"
+      COLLABORATION_GRPC_ADDR: 0.0.0.0:9301
+      COLLABORATION_HTTP_ADDR: 0.0.0.0:9300
+      COLLABORATION_LOG_LEVEL: info
+      COLLABORATION_WOPI_SRC: https://wopiserver
+      MICRO_REGISTRY: nats-js-kv
+      MICRO_REGISTRY_ADDRESS: opencloud:9233
       OC_URL: https://opencloud
-      OC_LOG_LEVEL: info
-      OC_LOG_COLOR: "true"
-      OC_LOG_PRETTY: "true"
-      # do not use SSL between the reverse proxy and OpenCloud
-      PROXY_TLS: "false"
-      # INSECURE: needed if OpenCloud / reverse proxy is using self generated certificates
-      OC_INSECURE: "true"
-      # basic auth (not recommended, but needed for eg. WebDav clients that do not support OpenID Connect)
-      PROXY_ENABLE_BASIC_AUTH: "false"
-      # admin user password
-      IDM_ADMIN_PASSWORD: "admin" # this overrides the admin password from the configuration file
-      # demo users
-      IDM_CREATE_DEMO_USERS: "false"
-      # email server (if configured)
-      NOTIFICATIONS_SMTP_HOST: ""
-      NOTIFICATIONS_SMTP_PORT: ""
-      NOTIFICATIONS_SMTP_SENDER: "OpenCloud notifications <notifications@opencloud>"
-      NOTIFICATIONS_SMTP_USERNAME: ""
-      NOTIFICATIONS_SMTP_PASSWORD: ""
-      NOTIFICATIONS_SMTP_INSECURE: ""
-      NOTIFICATIONS_SMTP_AUTHENTICATION: ""
-      NOTIFICATIONS_SMTP_ENCRYPTION: "none"
+    image: opencloudeu/opencloud-rolling:3.0.0@sha256:e6777ca9b86da88f8b4a3a9f89e103e09386694d55ad25e76399f227780a3432
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.collaboration.entrypoints: https
+      traefik.http.routers.collaboration.rule: Host(`wopiserver`)
+      traefik.http.routers.collaboration.service: collaboration
+      traefik.http.routers.collaboration.tls.certresolver: letsencrypt
+      traefik.http.services.collaboration.loadbalancer.server.port: "9300"
+    logging:
+      driver: local
+    networks:
+      opencloud-net: null
+    restart: always
+    volumes:
+      - opencloud-config:/etc/opencloud
+  opencloud:
+    command:
+      - -c
+      - opencloud init || true; opencloud server
+    entrypoint:
+      - /bin/sh
+
+#    command: /bin/sh -c "opencloud init || true; opencloud server"
+    #   - -c
+    #   - opencloud init || true; opencloud server
+    #entrypoint: /bin/sh -c "opencloud init || true; opencloud server"
+    #   - /bin/sh
+    environment:
+      IDM_ADMIN_PASSWORD: admin
+      COLLABORA_DOMAIN: collabora
+      FRONTEND_APP_HANDLER_SECURE_VIEW_APP_ADDR: eu.opencloud.api.collaboration.CollaboraOnline
       FRONTEND_ARCHIVER_MAX_SIZE: "10000000000"
-      PROXY_CSP_CONFIG_FILE_LOCATION: /etc/opencloud/csp.yaml
-      # enable to allow using the banned passwords list
+      GATEWAY_GRPC_ADDR: 0.0.0.0:9142
+      GRAPH_AVAILABLE_ROLES: b1e2218d-eef8-4d4c-b82d-0f1a1b48f3b5,a8d5fe5e-96e3-418d-825b-534dbdf22b99,fb6c3e19-e378-47e5-b277-9732f9de6e21,58c63c02-1d89-4572-916a-870abc5a1b7d,2d00ce52-1fc2-4dbc-8b95-a73b73395f5a,1c996275-f1c9-4e71-abdf-a42f6495e960,312c0871-5ef7-4b3a-85b6-0e4074c64049,aa97fe03-7980-45ac-9e50-b325749fd7e6
+      IDM_CREATE_DEMO_USERS: "false"
+      NATS_NATS_HOST: 0.0.0.0
+      NOTIFICATIONS_SMTP_AUTHENTICATION: ""
+      NOTIFICATIONS_SMTP_ENCRYPTION: none
+      NOTIFICATIONS_SMTP_HOST: ""
+      NOTIFICATIONS_SMTP_INSECURE: ""
+      NOTIFICATIONS_SMTP_PASSWORD: ""
+      NOTIFICATIONS_SMTP_PORT: ""
+      NOTIFICATIONS_SMTP_SENDER: OpenCloud notifications <notifications@opencloud>
+      NOTIFICATIONS_SMTP_USERNAME: ""
+      OC_ADD_RUN_SERVICES: notifications
+      OC_INSECURE: "true"
+      OC_LOG_COLOR: "false"
+      OC_LOG_LEVEL: info
+      OC_LOG_PRETTY: "false"
       OC_PASSWORD_POLICY_BANNED_PASSWORDS_LIST: banned-password-list.txt
+      OC_URL: https://opencloud
+      PROXY_CSP_CONFIG_FILE_LOCATION: /etc/opencloud/csp.yaml
+      PROXY_ENABLE_BASIC_AUTH: "false"
+      PROXY_TLS: "false"
       SEARCH_EXTRACTOR_TYPE: tika
       SEARCH_EXTRACTOR_TIKA_TIKA_URL: http://tika:9998
       FRONTEND_FULL_TEXT_SEARCH_ENABLED: "true"
-      # COllabora Online configuration
-      COLLABORA_DOMAIN: collabora
-      # expose nats and the reva gateway for the collaboration service
-      NATS_NATS_HOST: 0.0.0.0
-      GATEWAY_GRPC_ADDR: 0.0.0.0:9142
-      # make collabora the secure view app
-      FRONTEND_APP_HANDLER_SECURE_VIEW_APP_ADDR: eu.opencloud.api.collaboration.CollaboraOnline
-      GRAPH_AVAILABLE_ROLES: "b1e2218d-eef8-4d4c-b82d-0f1a1b48f3b5,a8d5fe5e-96e3-418d-825b-534dbdf22b99,fb6c3e19-e378-47e5-b277-9732f9de6e21,58c63c02-1d89-4572-916a-870abc5a1b7d,2d00ce52-1fc2-4dbc-8b95-a73b73395f5a,1c996275-f1c9-4e71-abdf-a42f6495e960,312c0871-5ef7-4b3a-85b6-0e4074c64049,aa97fe03-7980-45ac-9e50-b325749fd7e6"
 
+    image: opencloudeu/opencloud-rolling:3.0.0@sha256:e6777ca9b86da88f8b4a3a9f89e103e09386694d55ad25e76399f227780a3432
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.opencloud.entrypoints: https
+      traefik.http.routers.opencloud.rule: Host(`opencloud`)
+      traefik.http.routers.opencloud.service: opencloud
+      traefik.http.routers.opencloud.tls.certresolver: letsencrypt
+      traefik.http.services.opencloud.loadbalancer.server.port: "9200"
+    logging:
+      driver: local
+    networks:
+      opencloud-net: null
+    restart: always
     volumes:
       - ./config/opencloud/csp.yaml:/etc/opencloud/csp.yaml
       - ./config/opencloud/banned-password-list.txt:/etc/opencloud/banned-password-list.txt
-      # configure the .env file to use own paths instead of docker internal volumes
       - opencloud-config:/etc/opencloud
-      # - ${OC_DATA_DIR:-opencloud-data}:/var/lib/opencloud
+      # - type: volume
+      #   source: opencloud-data
+      #   target: /var/lib/opencloud
+        # volume: {}
       - ./config/opencloud/apps:/var/lib/opencloud/web/assets/apps
-    # logging:
-    #   driver: ${LOG_DRIVER:-local}
-    # restart: always
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.opencloud.entrypoints=https"
-      - "traefik.http.routers.opencloud.rule=Host(`opencloud`)"
-      - "traefik.http.routers.opencloud.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.opencloud.service=opencloud"
-      - "traefik.http.services.opencloud.loadbalancer.server.port=9200"
   traefik:
-    image: traefik:v3.3.1
-    # release notes: https://github.com/traefik/traefik/releases
+    command:
+      - --log.level=ERROR
+      - --certificatesResolvers.letsencrypt.acme.email=example@example.org
+      - --certificatesResolvers.letsencrypt.acme.storage=/certs/acme.json
+      - --certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint=http
+      - --certificatesResolvers.letsencrypt.acme.caserver=https://acme-v02.api.letsencrypt.org/directory
+      - --api.dashboard=true
+      - --entryPoints.http.address=:80
+      - --entryPoints.http.http.redirections.entryPoint.to=https
+      - --entryPoints.http.http.redirections.entryPoint.scheme=https
+      - --entryPoints.https.address=:443
+      - --entryPoints.https.transport.respondingTimeouts.readTimeout=12h
+      - --entryPoints.https.transport.respondingTimeouts.writeTimeout=12h
+      - --entryPoints.https.transport.respondingTimeouts.idleTimeout=3m
+      - --providers.docker.endpoint=unix:///var/run/docker.sock
+      - --providers.docker.exposedByDefault=false
+      - --accessLog=true
+      - --accessLog.format=json
+      - --accessLog.fields.headers.names.X-Request-Id=keep
+    image: traefik:v3.3.1@sha256:2c8941011f1a5090f46b69f53b4c44f709b744efb91fc511b2a4145abace668a
+    labels:
+      traefik.enable: "false"
+      traefik.http.middlewares.traefik-auth.basicauth.users: admin:$$apr1$$4vqie50r$$YQAmQdtmz5n9rEALhxJ4l.
+      traefik.http.routers.traefik.entrypoints: https
+      traefik.http.routers.traefik.middlewares: traefik-auth
+      traefik.http.routers.traefik.rule: Host(`traefik`)
+      traefik.http.routers.traefik.service: api@internal
+      traefik.http.routers.traefik.tls.certresolver: letsencrypt
+    logging:
+      driver: local
     networks:
       opencloud-net:
         aliases:
           - opencloud
           - collabora
           - wopiserver
-
-    command:
-      - "--log.level=ERROR"
-      # letsencrypt configuration
-      - "--certificatesResolvers.letsencrypt.acme.email=example@example.org"
-      - "--certificatesResolvers.letsencrypt.acme.storage=/certs/acme.json"
-      - "--certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint=http"
-      - "--certificatesResolvers.letsencrypt.acme.caserver=https://acme-v02.api.letsencrypt.org/directory"
-      # enable dashboard
-      - "--api.dashboard=true"
-      # define entrypoints
-      - "--entryPoints.http.address=:80"
-      - "--entryPoints.http.http.redirections.entryPoint.to=https"
-      - "--entryPoints.http.http.redirections.entryPoint.scheme=https"
-      - "--entryPoints.https.address=:443"
-      # change default timeouts for long-running requests
-      # this is needed for webdav clients that do not support the TUS protocol
-      - "--entryPoints.https.transport.respondingTimeouts.readTimeout=12h"
-      - "--entryPoints.https.transport.respondingTimeouts.writeTimeout=12h"
-      - "--entryPoints.https.transport.respondingTimeouts.idleTimeout=3m"
-      # docker provider (get configuration from container labels)
-      - "--providers.docker.endpoint=unix:///var/run/docker.sock"
-      - "--providers.docker.exposedByDefault=false"
-      # access log
-      - "--accessLog=true"
-      - "--accessLog.format=json"
-      - "--accessLog.fields.headers.names.X-Request-Id=keep"
     ports:
-      - "80:80"
-      - "443:443"
+      - 80:80
+      - 443:443
+    restart: always
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      # - "certs:/certs"
-    labels:
-      - "traefik.enable=false"
-      # defaults to admin:admin
-      - "traefik.http.middlewares.traefik-auth.basicauth.users=admin:$$apr1$$4vqie50r$$YQAmQdtmz5n9rEALhxJ4l."
-      - "traefik.http.routers.traefik.entrypoints=https"
-      - "traefik.http.routers.traefik.rule=Host(`traefik`)"
-      - "traefik.http.routers.traefik.middlewares=traefik-auth"
-      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.traefik.service=api@internal"
-    # logging:
-    #   driver: ${LOG_DRIVER:-local}
-    # restart: always
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # - type: volume
+      #   source: certs
+      #   target: /certs
+      #   volume: {}
+
   tika:
-    image: apache/tika:3.2.0.0-full
-    # release notes: https://tika.apache.org
+    image: apache/tika:3.2.0.0-full@sha256:62e24c820c0be460bc8297c05e0c98b9aee1df3fde51aa950af53cc0ec62b9f4
     networks:
       opencloud-net:
-
-  collaboration:
-    ports:
-      # expose the wopi server
-      - "9300:9300"
-
-    image: opencloudeu/opencloud-rolling:2.3.0
-    networks:
-      opencloud-net:
-    # depends_on:
-    #   opencloud:
-    #     condition: service_started
-    #   collabora:
-    #     condition: service_healthy
-    entrypoint:
-      - /bin/sh
-    command: [ "-c", "opencloud collaboration server" ]
-    environment:
-      COLLABORATION_GRPC_ADDR: 0.0.0.0:9301
-      COLLABORATION_HTTP_ADDR: 0.0.0.0:9300
-      MICRO_REGISTRY: "nats-js-kv"
-      MICRO_REGISTRY_ADDRESS: "opencloud:9233"
-      COLLABORATION_WOPI_SRC: https://wopiserver
-      COLLABORATION_APP_NAME: "CollaboraOnline"
-      COLLABORATION_APP_PRODUCT: "Collabora"
-      COLLABORATION_APP_ADDR: https://collabora
-      COLLABORATION_APP_ICON: https://collabora/favicon.ico
-      COLLABORATION_APP_INSECURE: "true"
-      COLLABORATION_CS3API_DATAGATEWAY_INSECURE: "true"
-      COLLABORATION_LOG_LEVEL: info
-      OC_URL: https://opencloud
-    volumes:
-      # configure the .env file to use own paths instead of docker internal volumes
-      - opencloud-config:/etc/opencloud
-    # logging:
-    #   driver: local
     restart: always
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.collaboration.entrypoints=https"
-      - "traefik.http.routers.collaboration.rule=Host(`wopiserver`)"
-      - "traefik.http.routers.collaboration.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.collaboration.service=collaboration"
-      - "traefik.http.services.collaboration.loadbalancer.server.port=9300"
-
-  collabora:
-    ports:
-      # expose the collabora server
-      - "9980:9980"
-
-    image: collabora/code:25.04.1.1.1
-    # release notes: https://www.collaboraonline.com/release-notes/
-    networks:
-      opencloud-net:
-    environment:
-      aliasgroup1: https://wopiserver
-      DONT_GEN_SSL_CERT: "YES"
-      extra_params: |
-        --o:ssl.enable=false \
-        --o:ssl.ssl_verification=false \
-        --o:ssl.termination=true \
-        --o:welcome.enable=false \
-        --o:net.frame_ancestors=opencloud
-      username: admin
-      password: admin
-    # cap_add:
-    #   - MKNOD
-    # logging:
-    #   driver: local
-    restart: always
-    entrypoint: ['/bin/bash', '-c']
-    command: ['coolconfig generate-proof-key && /start-collabora-online.sh']
-    # healthcheck:
-    #   test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9980 && echo -e 'GET /hosting/discovery HTTP/1.1\r\nHost: localhost:9980\r\n\r\n' >&3 && head -n 1 <&3 | grep '200 OK'"]
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.collabora.entrypoints=https"
-      - "traefik.http.routers.collabora.rule=Host(`collabora`)"
-      - "traefik.http.routers.collabora.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.collabora.service=collabora"
-      - "traefik.http.services.collabora.loadbalancer.server.port=9980"
+    logging:
+      driver: local
 
 networks:
   opencloud-net:
-
+    name: opencloud-compose_opencloud-net
 volumes:
+  # certs:
+  #   name: opencloud-compose_certs
   opencloud-config:
+    name: opencloud-compose_opencloud-config
+  # opencloud-data:
+  #   name: opencloud-compose_opencloud-data

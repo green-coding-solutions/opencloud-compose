@@ -1,3 +1,22 @@
+This is a copy od the OpenCloud compose repo for the evaluation to get the Blue Angel for Software.
+
+You will need to run `make` in the download folder fist to generate a large file. I didn't want to check this into github.
+
+For dev you can use the run string:
+```
+./runner.py --uri PATH_PLEASE_REPLACe/opencloud-compose --name test --allow-unsafe --skip-volume-inspect --dev-no-metrics --dev-no-sleeps --dev-no-phase-stats  --dev-no-optimizations --dev-no-save --skip-system-checks --dev-cache-build --debug
+```
+
+and then
+
+```
+docker exec -it gcb-playwright /bin/bash
+```
+
+to test the scripts.
+
+For the measurments you will need to add `--allow-unsafe` as we need volumes for the containers to communicate
+
 # OpenCloud Compose
 
 This repository provides Docker Compose configurations for deploying OpenCloud in various environments.
@@ -33,21 +52,21 @@ OpenCloud Compose offers a modular approach to deploying OpenCloud with several 
    ```bash
    cp .env.example .env
    ```
-   
+
    > **Note**: The repository includes `.env.example` as a template with default settings and documentation. Your actual `.env` file is excluded from version control (via `.gitignore`) to prevent accidentally committing sensitive information like passwords and domain-specific settings.
 
 3. **Configure deployment options**:
-   
+
    You can deploy using explicit `-f` flags:
    ```bash
    docker compose -f docker-compose.yml -f traefik/opencloud.yml up -d
    ```
-   
+
    Or by uncommenting the `COMPOSE_FILE` variable in `.env`:
    ```
    COMPOSE_FILE=docker-compose.yml:traefik/opencloud.yml
    ```
-   
+
    Then simply run:
    ```bash
    docker compose up -d
@@ -197,8 +216,8 @@ This exposes the necessary ports:
 - WOPI server: 9300
 
 
-**Please note:**  
-If you're using **Nginx Proxy Manager (NPM)**, you **should NOT** activate **"Block Common Exploits"** for the Proxy Host.  
+**Please note:**
+If you're using **Nginx Proxy Manager (NPM)**, you **should NOT** activate **"Block Common Exploits"** for the Proxy Host.
 Otherwise, the desktop app authentication will return **error 403 Forbidden**.
 
 

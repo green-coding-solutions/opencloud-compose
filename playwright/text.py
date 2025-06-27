@@ -1,11 +1,20 @@
-import contextlib
-import hashlib
-import os
-import re
-import shutil
-import sys
-import tempfile
-from time import time_ns, sleep
+# - Simples Dokumenten-Editing + Dokumenten-Versionierung
+#     - Anlegen eines neuen Textdokuments
+#     - Einpflegen von 10 Absätzen Text
+#     - Speichern und Schließen
+#     - Dokument erneut öffnen
+#     - Validierung ob erwarteter Text enthalten ist
+#     - Hinzufügen eines weiteren Paragraphs
+#     - Speichern und Schließen
+#     - Dokument erneut öffnen
+#     - Validierung ob erwarteter Text enthalten ist
+#     - Schließen
+#     - Dokument auf initiale Version zurücksetzen mit lediglich 10 Absätzen Text
+#     - Dokument erneut öffnen
+#     - Validierung ob erwarteter Text enthalten ist
+#     - Schließen
+#     - Löschen aller Dateien - Leeren des Papierkorbs
+
 import signal
 import random
 import string
@@ -27,8 +36,8 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
     if browser_name == "firefox":
         browser = playwright.firefox.launch(headless=False)
 
-    else:
-        browser = playwright.chromium.launch(headless=False, downloads_path=download_path, args=['--disable-gpu', '--disable-software-rasterizer', '--ozone-platform=wayland'])
+    # else:
+    #     browser = playwright.chromium.launch(headless=False, downloads_path=download_path, args=['--disable-gpu', '--disable-software-rasterizer', '--ozone-platform=wayland'])
 
     context = browser.new_context(ignore_https_errors=True)
     page = context.new_page()
@@ -41,6 +50,7 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
         login(page, domain=DOMAIN)
         user_sleep()
 
+        log_note("- Anlegen eines neuen Textdokuments")
         wait_and_click(page, 'button#new-file-menu-btn:has-text("New")')
 
         wait_and_click(page, 'button.new-file-btn-md:has-text("Markdown file")')
@@ -54,7 +64,7 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
         user_sleep()
 
         page.wait_for_selector('.cm-content')
-
+        log_note("- Einpflegen von 10 Absätzen Text")
         for i, t in enumerate(text):
             log_note(f"Adding text block {i+1} of {len(text)}")
             editor_content_selector = 'div.cm-content'
@@ -71,13 +81,10 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
                 f'span.oc-resource-name[data-test-resource-name="{file_name}"]'
                 f')'
             )
-
-            # 2. Now, select the <a> tag *within that same cell* that is the resource link.
-            # The <a> tag has the class 'oc-resource-link' and it contains the resource name span.
             file_link_selector = (
-                f'{file_cell_selector} ' # Start with the file's specific table cell
-                'a.oc-resource-link:has(' # Find the anchor with class 'oc-resource-link' that also contains
-                f'span.oc-resource-name[data-test-resource-name="{file_name}"]' # The specific file name span
+                f'{file_cell_selector} '
+                'a.oc-resource-link:has('
+                f'span.oc-resource-name[data-test-resource-name="{file_name}"]'
                 ')'
             )
             wait_and_click(page, file_link_selector)
@@ -116,13 +123,13 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
 
 if __name__ == "__main__":
 
-    if len(sys.argv) > 1:
-        browser_name = sys.argv[1].lower()
-        if browser_name not in ["chromium", "firefox"]:
-            print("Invalid browser name. Please choose either 'chromium' or 'firefox'.")
-            sys.exit(1)
-    else:
-        browser_name = "firefox"
+    # if len(sys.argv) > 1:
+    #     browser_name = sys.argv[1].lower()
+    #     if browser_name not in ["chromium", "firefox"]:
+    #         print("Invalid browser name. Please choose either 'chromium' or 'firefox'.")
+    #         sys.exit(1)
+    # else:
+    #     browser_name = "firefox"
 
     with sync_playwright() as playwright:
-        run(playwright, browser_name)
+        run(playwright, "firefox")
