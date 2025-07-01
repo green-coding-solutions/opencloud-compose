@@ -30,11 +30,11 @@ services:
       - command: sleep 10
 
 flow:
-  - name: Bilder
+  - name: Images
     container: gcb-playwright
     commands:
       - type: console
-        command: python3 /tmp/repo/playwright/bilder.py
+        command: python3 /tmp/repo/playwright/images.py
   - name: Document
     container: gcb-playwright
     commands:
