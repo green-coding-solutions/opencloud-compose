@@ -8,7 +8,7 @@ compose-file: !include docker-compose.yml
 
 services:
   gcb-playwright:
-    image: greencoding/gcb_playwright:v14
+    image: greencoding/gcb_playwright:v19
     # depends_on:
     #   nc:
     #     condition: service_healthy
@@ -30,11 +30,11 @@ services:
       - command: sleep 10
 
 flow:
-  - name: Bilder
+  - name: Images
     container: gcb-playwright
     commands:
       - type: console
-        command: python3 /tmp/repo/playwright/bilder.py
+        command: python3 /tmp/repo/playwright/images.py
   - name: Document
     container: gcb-playwright
     commands:
