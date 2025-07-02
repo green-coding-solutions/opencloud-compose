@@ -1,0 +1,50 @@
+---
+name: OpenCloud File Management
+author: Didi Hoffmann <didi@green-coding.io>
+description: "
+- Create a new user (User #2)
+- Create a new space
+- Upload a large file (> 1 GB) (e.g. creation via cat /dev/random + hashing)
+- To prove efficiency through PosixFS
+- Implicit: Search Indexing with Tika
+- Upload a PDF file “Moby Dick”
+- Sharing both files with other users
+- Use of the search function in the text of the files by user #2 with the term “Carpet”
+- Ensure the document was found
+- Download both files by user #2
+- Validation for correct SHA-256 hash
+- Delete all files - Empty the recycle bin"
+ignore-unsupported-compose: true
+
+compose-file: !include docker-compose.yml
+
+services:
+  gcb-playwright:
+    image: greencoding/gcb_playwright:v19
+    # depends_on:
+    #   nc:
+    #     condition: service_healthy
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix # for debugging in non-headless mode
+    environment:
+       DISPLAY: ":0" # for debugging in non-headless mode
+    networks:
+      opencloud-net:
+
+  opencloud:
+    setup-commands:
+      - command: sleep 10
+  collabora:
+    setup-commands:
+      - command: sleep 10
+  traefik:
+    setup-commands:
+      - command: sleep 10
+
+flow:
+  - name: File
+    container: gcb-playwright
+    commands:
+      - type: console
+        command: python3 /tmp/repo/playwright/file.py
+

@@ -1,0 +1,52 @@
+---
+name: OpenCloud Blue Angel Scenarios
+author: Didi Hoffmann <didi@green-coding.io>
+description: Testing all relevant scenarios for the Blue Angel for OpenCloud in 2025 in one scenario (Images, Document, File, Text)
+ignore-unsupported-compose: true
+
+compose-file: !include docker-compose.yml
+
+services:
+  gcb-playwright:
+    image: greencoding/gcb_playwright:v19
+    # depends_on:
+    #   nc:
+    #     condition: service_healthy
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix # for debugging in non-headless mode
+    environment:
+       DISPLAY: ":0" # for debugging in non-headless mode
+    networks:
+      opencloud-net:
+
+  opencloud:
+    setup-commands:
+      - command: sleep 10
+  collabora:
+    setup-commands:
+      - command: sleep 10
+  traefik:
+    setup-commands:
+      - command: sleep 10
+
+flow:
+  - name: Images
+    container: gcb-playwright
+    commands:
+      - type: console
+        command: python3 /tmp/repo/playwright/images.py
+  - name: Document
+    container: gcb-playwright
+    commands:
+      - type: console
+        command: python3 /tmp/repo/playwright/document.py
+  - name: File
+    container: gcb-playwright
+    commands:
+      - type: console
+        command: python3 /tmp/repo/playwright/file.py
+  - name: Text
+    container: gcb-playwright
+    commands:
+      - type: console
+        command: python3 /tmp/repo/playwright/text.py

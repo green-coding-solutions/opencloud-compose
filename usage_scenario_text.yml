@@ -1,0 +1,52 @@
+---
+name: "OpenCloud Simple Document Editing"
+author: Didi Hoffmann <didi@green-coding.io>
+description: "
+- Creating a new text document
+- Entering 10 paragraphs of text
+- Save and close
+- Open document again
+- Validate whether expected text is included
+- Add another paragraph
+- Save and close
+- Reopen document
+- Validate whether expected text is included
+- Close the document
+- Reset document to initial version with only 10 paragraphs of text
+- Reopen document
+- Validate if expected text is included
+- Close the document
+- Delete all files - Empty the recycle bin"
+ignore-unsupported-compose: true
+
+compose-file: !include docker-compose.yml
+
+services:
+  gcb-playwright:
+    image: greencoding/gcb_playwright:v19
+    # depends_on:
+    #   nc:
+    #     condition: service_healthy
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix # for debugging in non-headless mode
+    environment:
+       DISPLAY: ":0" # for debugging in non-headless mode
+    networks:
+      opencloud-net:
+
+  opencloud:
+    setup-commands:
+      - command: sleep 10
+  collabora:
+    setup-commands:
+      - command: sleep 10
+  traefik:
+    setup-commands:
+      - command: sleep 10
+
+flow:
+  - name: Text
+    container: gcb-playwright
+    commands:
+      - type: console
+        command: python3 /tmp/repo/playwright/text.py

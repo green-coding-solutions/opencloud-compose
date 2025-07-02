@@ -1,7 +1,12 @@
 ---
-name: Own Cloud Usage
+name: OpenCloud Image Management
 author: Didi Hoffmann <didi@green-coding.io>
-description: A test to see if the Owncloud will load in the GMT
+description: "
+- Create a new space incl. description
+- Upload 10 images
+- Preview (preview service) of the images
+- Implicit: Search Indexing with Tika
+- Delete all files - Empty the recycle bin"
 ignore-unsupported-compose: true
 
 compose-file: !include docker-compose.yml
@@ -35,18 +40,3 @@ flow:
     commands:
       - type: console
         command: python3 /tmp/repo/playwright/images.py
-  - name: Document
-    container: gcb-playwright
-    commands:
-      - type: console
-        command: python3 /tmp/repo/playwright/document.py
-  - name: File
-    container: gcb-playwright
-    commands:
-      - type: console
-        command: python3 /tmp/repo/playwright/file.py
-  - name: Text
-    container: gcb-playwright
-    commands:
-      - type: console
-        command: python3 /tmp/repo/playwright/text.py

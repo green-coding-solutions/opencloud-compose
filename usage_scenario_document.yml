@@ -1,0 +1,45 @@
+---
+name: "OpenCloud Document Editing (Collaborative)"
+author: Didi Hoffmann <didi@green-coding.io>
+description: "
+- Create a new user (User #2)
+- Create an .odt document
+- Sharing the document with user #2
+- Entering 10 paragraphs of text by user #1
+- Opening the link by user #2
+- Validate whether expected text is included
+- Enter another 2 paragraphs of text
+- Validation by user #1 whether expected text is included"
+ignore-unsupported-compose: true
+
+compose-file: !include docker-compose.yml
+
+services:
+  gcb-playwright:
+    image: greencoding/gcb_playwright:v19
+    # depends_on:
+    #   nc:
+    #     condition: service_healthy
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix # for debugging in non-headless mode
+    environment:
+       DISPLAY: ":0" # for debugging in non-headless mode
+    networks:
+      opencloud-net:
+
+  opencloud:
+    setup-commands:
+      - command: sleep 10
+  collabora:
+    setup-commands:
+      - command: sleep 10
+  traefik:
+    setup-commands:
+      - command: sleep 10
+
+flow:
+  - name: Document
+    container: gcb-playwright
+    commands:
+      - type: console
+        command: python3 /tmp/repo/playwright/document.py
