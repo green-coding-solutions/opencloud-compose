@@ -1,7 +1,5 @@
 This is a copy od the OpenCloud compose repo for the evaluation to get the Blue Angel for Software.
 
-You will need to run `make` in the download folder fist to generate a large file. I didn't want to check this into github.
-
 For dev you can use the run string:
 ```
 ./runner.py --uri PATH_PLEASE_REPLACe/opencloud-compose --name test --allow-unsafe --skip-volume-inspect --dev-no-metrics --dev-no-sleeps --dev-no-phase-stats  --dev-no-optimizations --dev-no-save --skip-system-checks --dev-cache-build --debug
