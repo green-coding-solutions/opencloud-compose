@@ -29,7 +29,7 @@ services:
       opencloud-net:
     setup-commands: # moving repo so we can create files there (is read only)
       - command: cp -r /tmp/repo /tmp/repo-copy
-      - command: cd /tmp/repo-copy/downloads && make
+      - command: cd /tmp/repo-copy/downloads && bash make-equivalent-bash.sh
         shell: bash
 
   opencloud:
