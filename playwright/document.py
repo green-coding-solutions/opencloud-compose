@@ -62,7 +62,7 @@ def second_user(playwright: Playwright, browser_name: str, headless=False) -> No
     # else:
     #     browser = playwright.chromium.launch(headless=False, downloads_path=download_path, args=['--disable-gpu', '--disable-software-rasterizer', '--ozone-platform=wayland'])
 
-    context = browser.new_context(ignore_https_errors=True)
+    context = browser.new_context(ignore_https_errors=True, viewport={"width": 1280, "height": 720})
 
     page = context.new_page()
 
@@ -197,7 +197,7 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
     # else:
     #     browser = playwright.chromium.launch(headless=False, downloads_path=download_path, args=['--disable-gpu', '--disable-software-rasterizer', '--ozone-platform=wayland'])
 
-    context = browser.new_context(ignore_https_errors=True)
+    context = browser.new_context(ignore_https_errors=True, viewport={"width": 1280, "height": 720})
     page = context.new_page()
 
     try:
