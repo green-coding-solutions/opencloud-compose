@@ -96,6 +96,10 @@ services:
     #   - opencloud init || true; opencloud server
     #entrypoint: /bin/sh -c "opencloud init || true; opencloud server"
     #   - /bin/sh
+    depends_on:
+      tika:
+        condition: service_started
+        required: true
     environment:
       IDM_ADMIN_PASSWORD: admin
       COLLABORA_DOMAIN: collabora
