@@ -14,13 +14,10 @@ compose-file: !include docker-compose.yml
 services:
   gcb-playwright:
     image: greencoding/gcb_playwright:v19
-    # depends_on:
-    #   nc:
-    #     condition: service_healthy
     volumes:
-      - /tmp/.X11-unix:/tmp/.X11-unix # for debugging in non-headless mode
+      - /tmp/.X11-unix:/tmp/.X11-unix
     environment:
-       DISPLAY: ":0" # for debugging in non-headless mode
+       DISPLAY: ":0"
     networks:
       opencloud-net:
     setup-commands: # moving repo so we can create files there (is read only)
