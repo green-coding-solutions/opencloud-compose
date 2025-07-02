@@ -26,9 +26,9 @@ from helper_functions import log_note, get_random_text, login, timeout_handler, 
 
 DOMAIN = 'https://opencloud'
 
-GB_FILE_PATH = '/tmp/repo/downloads/largefile.bin'
-HASH_FILE = '/tmp/repo/downloads/hashes.txt'
-MOBY_FILE_PATH = '/tmp/repo/downloads/moby-dick.pdf'
+GB_FILE_PATH = '/tmp/repo-copy/downloads/largefile.bin'
+HASH_FILE = '/tmp/repo-copy/downloads/hashes.txt'
+MOBY_FILE_PATH = '/tmp/repo-copy/downloads/moby-dick.pdf'
 
 USER2 = {
     'username': ''.join(random.choices(string.ascii_letters, k=5)),

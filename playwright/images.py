@@ -15,7 +15,7 @@ from helper_functions import log_note, get_random_text, login, timeout_handler, 
 
 DOMAIN = 'https://opencloud'
 
-DOWNLOAD_DIR = '/tmp/repo/downloads/'
+DOWNLOAD_DIR = '/tmp/repo-copy/downloads/'
 
 def run(playwright: Playwright, browser_name: str, headless=False) -> None:
     log_note(f"Launch browser {browser_name}")

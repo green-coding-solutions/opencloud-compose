@@ -30,6 +30,10 @@ services:
        DISPLAY: ":0" # for debugging in non-headless mode
     networks:
       opencloud-net:
+    setup-commands: # moving repo so we can create files there (is read only)
+      - command: cp /tmp/repo /tmp/repo-copy
+      - command: cd /tmp/repo-copy/downloads && make
+        shell: bash
 
   opencloud:
     setup-commands:
