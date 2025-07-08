@@ -48,6 +48,8 @@ services:
 flow:
   - name: Text
     container: gcb-playwright
+    log-stdout: true
+    read-notes-stdout: true
     commands:
       - type: console
         command: python3 /tmp/repo/playwright/text.py

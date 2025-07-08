@@ -45,6 +45,8 @@ services:
 flow:
   - name: File
     container: gcb-playwright
+    log-stdout: true
+    read-notes-stdout: true
     commands:
       - type: console
         command: python3 /tmp/repo/playwright/file.py
