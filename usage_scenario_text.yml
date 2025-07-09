@@ -34,6 +34,8 @@ services:
       - command: cp -r /tmp/repo /tmp/repo-copy
       - command: cd /tmp/repo-copy/downloads && bash make-equivalent-bash.sh
         shell: bash
+    log-stdout: true
+    read-notes-stdout: true
 
   opencloud:
     setup-commands:
@@ -48,8 +50,6 @@ services:
 flow:
   - name: Text
     container: gcb-playwright
-    log-stdout: true
-    read-notes-stdout: true
     commands:
       - type: console
         command: python3 /tmp/repo/playwright/text.py
