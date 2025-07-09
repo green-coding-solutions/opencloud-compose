@@ -24,8 +24,6 @@ services:
       - command: cp -r /tmp/repo /tmp/repo-copy
       - command: cd /tmp/repo-copy/downloads && bash make-equivalent-bash.sh
         shell: bash
-    log-stdout: true
-    read-notes-stdout: true
 
   opencloud:
     setup-commands:
@@ -43,3 +41,5 @@ flow:
     commands:
       - type: console
         command: python3 /tmp/repo/playwright/images.py
+        log-stdout: true
+        read-notes-stdout: true
