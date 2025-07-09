@@ -34,7 +34,7 @@ assert len(text) == len(check), "Text and check lists must have the same length.
 def run(playwright: Playwright, browser_name: str, headless=False) -> None:
     log_note(f"Launch browser {browser_name}")
     if browser_name == "firefox":
-        browser = playwright.firefox.launch(headless=False)
+        browser = playwright.firefox.launch(headless=True)
 
     # else:
     #     browser = playwright.chromium.launch(headless=False, downloads_path=download_path, args=['--disable-gpu', '--disable-software-rasterizer', '--ozone-platform=wayland'])
