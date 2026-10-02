@@ -1,31 +1,26 @@
 name: opencloud-compose
 services:
   collabora:
-    # cap_add:
-    #   - MKNOD
-    #command: /bin/bash -c "coolconfig generate-proof-key && /start-collabora-online.sh"
-    # entrypoint:
-    #   -
-    #   - -c
-    command:
-      - coolconfig generate-proof-key && /start-collabora-online.sh
-    entrypoint:
-      - /bin/bash
-      - -c
+    # The image is distroless since 26.04.2.3 (no shell, no coolconfig, no sleep). So no entrypoint/command
+    # override. The image ENTRYPOINT is coolwsd --use-env-vars, which reads the environment below.
     environment:
-      DONT_GEN_SSL_CERT: "YES"
-      aliasgroup1: https://wopiserver:443
-      extra_params: --o:ssl.enable=false --o:ssl.ssl_verification=false --o:ssl.termination=true --o:welcome.enable=false --o:net.frame_ancestors=opencloud
+      # WOPI host allowlist. The WOPI endpoint is served by the opencloud proxy on the opencloud domain
+      aliasgroup1: https://cloud.opencloud.test
+      extra_params: --o:ssl.enable=false --o:ssl.ssl_verification=false --o:ssl.termination=true --o:welcome.enable=false --o:net.frame_ancestors=cloud.opencloud.test --o:net.lok_allow.host[14]=cloud.opencloud.test --o:home_mode.enable=false
       password: admin
       username: admin
-    # I can't get this to work
-    # healthcheck:
-    #   test: "CMD bash -c \"exec 3<>/dev/tcp/127.0.0.1/9980 && printf 'GET /hosting/discovery HTTP/1.1\r\nHost: localhost:9980\r\n\r\n' >&3 && head -n 1 <&3 | grep '200 OK'\""
-    image: collabora/code:25.04.1.1.1@sha256:8a0523a5238c8e0c7ce1458543b45d731d253113489ffa35b77bb5d9470bccb3
+    # No test here. GMT turns test into --health-cmd, which runs through /bin/sh and that does not exist in the image.
+    # Without test docker keeps the image healthcheck (coolwsd --probe --use-env-vars).
+    # start_interval polls during boot. The long interval keeps the probe from running during the measurement.
+    healthcheck:
+      start_period: 300s
+      start_interval: 2s
+      interval: 3600s
+    image: collabora/code:26.04.4.2.1@sha256:4e983196eb9878f339cc506c38c21f1cc3473bca3d6de883c5de08f9c0cc3a6c
     labels:
       traefik.enable: "true"
       traefik.http.routers.collabora.entrypoints: https
-      traefik.http.routers.collabora.rule: Host(`collabora`)
+      traefik.http.routers.collabora.rule: Host(`collabora.opencloud.test`)
       traefik.http.routers.collabora.service: collabora
       traefik.http.routers.collabora.tls.certresolver: letsencrypt
       traefik.http.services.collabora.loadbalancer.server.port: "9980"
@@ -34,108 +29,71 @@ services:
     networks:
       opencloud-net: null
     restart: always
-  collaboration:
-#    command: /bin/sh -c "opencloud collaboration server"
-    command:
-      - -c
-      - opencloud collaboration server
-    entrypoint:
-      - /bin/sh
-    depends_on:
-      collabora:
-        # Somehow the health check does not work in the GMT will need to debug later
-        #condition: service_healthy
-        condition: service_started
-        required: true
-      opencloud:
-        condition: service_started
-        required: true
-      traefik:
-        condition: service_started
-        required: true
-    #entrypoint: /bin/sh -c "opencloud collaboration server"
-    #   -
-    environment:
-      COLLABORATION_APP_ADDR: https://collabora
-      COLLABORATION_APP_ICON: https://collabora/favicon.ico
-      COLLABORATION_APP_INSECURE: "true"
-      COLLABORATION_APP_NAME: CollaboraOnline
-      COLLABORATION_APP_PRODUCT: Collabora
-      COLLABORATION_CS3API_DATAGATEWAY_INSECURE: "true"
-      COLLABORATION_GRPC_ADDR: 0.0.0.0:9301
-      COLLABORATION_HTTP_ADDR: 0.0.0.0:9300
-      COLLABORATION_LOG_LEVEL: info
-      COLLABORATION_WOPI_SRC: https://wopiserver
-      MICRO_REGISTRY: nats-js-kv
-      MICRO_REGISTRY_ADDRESS: opencloud:9233
-      OC_URL: https://opencloud
-    image: opencloudeu/opencloud-rolling:3.0.0@sha256:e6777ca9b86da88f8b4a3a9f89e103e09386694d55ad25e76399f227780a3432
-    labels:
-      traefik.enable: "true"
-      traefik.http.routers.collaboration.entrypoints: https
-      traefik.http.routers.collaboration.rule: Host(`wopiserver`)
-      traefik.http.routers.collaboration.service: collaboration
-      traefik.http.routers.collaboration.tls.certresolver: letsencrypt
-      traefik.http.services.collaboration.loadbalancer.server.port: "9300"
-    logging:
-      driver: local
-    networks:
-      opencloud-net: null
-    restart: always
     volumes:
-      - opencloud-config:/etc/opencloud
+      # Throwaway WOPI proof key. coolwsd only loads it from this fixed path at startup and runs as uid 1001, so the file must stay world readable (0644)
+      # Regenerate with: docker run --rm --entrypoint openssl alpine/openssl:3.5.8 genrsa -traditional 4096 > config/collabora/proof_key
+      - ./config/collabora/proof_key:/etc/coolwsd/proof_key:ro
   opencloud:
     command:
       - -c
       - opencloud init || true; opencloud server
     entrypoint:
       - /bin/sh
-
-#    command: /bin/sh -c "opencloud init || true; opencloud server"
-    #   - -c
-    #   - opencloud init || true; opencloud server
-    #entrypoint: /bin/sh -c "opencloud init || true; opencloud server"
-    #   - /bin/sh
     depends_on:
       tika:
+        condition: service_healthy
+        required: true
+      # The collaboration service runs inside the opencloud process and fetches the collabora discovery on startup
+      collabora:
+        condition: service_healthy
+        required: true
+      traefik:
         condition: service_started
         required: true
     environment:
       IDM_ADMIN_PASSWORD: admin
-      COLLABORA_DOMAIN: collabora
-      FRONTEND_APP_HANDLER_SECURE_VIEW_APP_ADDR: eu.opencloud.api.collaboration.CollaboraOnline
+      COLLABORA_DOMAIN: collabora.opencloud.test
+      FRONTEND_APP_HANDLER_SECURE_VIEW_APP_ADDR: eu.opencloud.api.collaboration
       FRONTEND_ARCHIVER_MAX_SIZE: "10000000000"
-      GATEWAY_GRPC_ADDR: 0.0.0.0:9142
+      # Upstream default is true, which makes the browser call update.opencloud.eu. We do not want external calls in the measurement
+      FRONTEND_CHECK_FOR_UPDATES: "false"
       GRAPH_AVAILABLE_ROLES: b1e2218d-eef8-4d4c-b82d-0f1a1b48f3b5,a8d5fe5e-96e3-418d-825b-534dbdf22b99,fb6c3e19-e378-47e5-b277-9732f9de6e21,58c63c02-1d89-4572-916a-870abc5a1b7d,2d00ce52-1fc2-4dbc-8b95-a73b73395f5a,1c996275-f1c9-4e71-abdf-a42f6495e960,312c0871-5ef7-4b3a-85b6-0e4074c64049,aa97fe03-7980-45ac-9e50-b325749fd7e6
       IDM_CREATE_DEMO_USERS: "false"
-      NATS_NATS_HOST: 0.0.0.0
       NOTIFICATIONS_SMTP_AUTHENTICATION: ""
       NOTIFICATIONS_SMTP_ENCRYPTION: none
       NOTIFICATIONS_SMTP_HOST: ""
-      NOTIFICATIONS_SMTP_INSECURE: ""
+      NOTIFICATIONS_SMTP_INSECURE: "false"
       NOTIFICATIONS_SMTP_PASSWORD: ""
       NOTIFICATIONS_SMTP_PORT: ""
-      NOTIFICATIONS_SMTP_SENDER: OpenCloud notifications <notifications@opencloud>
+      NOTIFICATIONS_SMTP_SENDER: OpenCloud Notifications <notifications@cloud.opencloud.test>
       NOTIFICATIONS_SMTP_USERNAME: ""
-      OC_ADD_RUN_SERVICES: notifications
+      # Since 2026-06 upstream runs the collaboration (WOPI) service inside the main opencloud process
+      OC_ADD_RUN_SERVICES: notifications,collaboration
       OC_INSECURE: "true"
       OC_LOG_COLOR: "false"
       OC_LOG_LEVEL: info
       OC_LOG_PRETTY: "false"
       OC_PASSWORD_POLICY_BANNED_PASSWORDS_LIST: banned-password-list.txt
-      OC_URL: https://opencloud
+      OC_URL: https://cloud.opencloud.test
       PROXY_CSP_CONFIG_FILE_LOCATION: /etc/opencloud/csp.yaml
       PROXY_ENABLE_BASIC_AUTH: "false"
       PROXY_TLS: "false"
       SEARCH_EXTRACTOR_TYPE: tika
       SEARCH_EXTRACTOR_TIKA_TIKA_URL: http://tika:9998
       FRONTEND_FULL_TEXT_SEARCH_ENABLED: "true"
-
-    image: opencloudeu/opencloud-rolling:3.0.0@sha256:e6777ca9b86da88f8b4a3a9f89e103e09386694d55ad25e76399f227780a3432
+      # The WOPI endpoint is served by the opencloud proxy (/wopi and /collaboration routes), so no separate wopiserver domain is needed
+      COLLABORATION_WOPI_SRC: https://cloud.opencloud.test
+      COLLABORATION_APP_NAME: CollaboraOnline
+      COLLABORATION_APP_PRODUCT: Collabora
+      COLLABORATION_APP_ADDR: https://collabora.opencloud.test
+      COLLABORATION_APP_ICON: https://collabora.opencloud.test/favicon.ico
+      COLLABORATION_APP_INSECURE: "true"
+      COLLABORATION_CS3API_DATAGATEWAY_INSECURE: "true"
+    image: opencloudeu/opencloud-rolling:8.0.1@sha256:1e78144071ab3fc20d2533dd4c5709d24b7e1669c96439fdf7c73cb2808a5d5e
     labels:
       traefik.enable: "true"
       traefik.http.routers.opencloud.entrypoints: https
-      traefik.http.routers.opencloud.rule: Host(`opencloud`)
+      traefik.http.routers.opencloud.rule: Host(`cloud.opencloud.test`)
       traefik.http.routers.opencloud.service: opencloud
       traefik.http.routers.opencloud.tls.certresolver: letsencrypt
       traefik.http.services.opencloud.loadbalancer.server.port: "9200"
@@ -144,15 +102,12 @@ services:
     networks:
       opencloud-net: null
     restart: always
+    # Config (opencloud init) and data stay in the container filesystem, so every run starts fresh.
+    # The named config volume was only needed to share the config with the separate collaboration container.
     volumes:
-      - ./config/opencloud/csp.yaml:/etc/opencloud/csp.yaml
-      - ./config/opencloud/banned-password-list.txt:/etc/opencloud/banned-password-list.txt
-      - opencloud-config:/etc/opencloud
-      # - type: volume
-      #   source: opencloud-data
-      #   target: /var/lib/opencloud
-        # volume: {}
-      - ./config/opencloud/apps:/var/lib/opencloud/web/assets/apps
+      - ./config/opencloud/csp.yaml:/etc/opencloud/csp.yaml:ro
+      - ./config/opencloud/banned-password-list.txt:/etc/opencloud/banned-password-list.txt:ro
+      - ./config/opencloud/apps:/var/lib/opencloud/web/assets/apps:ro
   traefik:
     command:
       - --log.level=ERROR
@@ -170,16 +125,17 @@ services:
       - --entryPoints.https.transport.respondingTimeouts.idleTimeout=3m
       - --providers.docker.endpoint=unix:///var/run/docker.sock
       - --providers.docker.exposedByDefault=false
-      - --accessLog=true
+      # Upstream default changed from true to false
+      - --accessLog=false
       - --accessLog.format=json
       - --accessLog.fields.headers.names.X-Request-Id=keep
-    image: traefik:v3.3.1@sha256:2c8941011f1a5090f46b69f53b4c44f709b744efb91fc511b2a4145abace668a
+    image: traefik:v3.7.13@sha256:24841fe2de7304c149343d877d2923b4c8800a38ba015dea9174c23b20e344a0
     labels:
       traefik.enable: "false"
       traefik.http.middlewares.traefik-auth.basicauth.users: admin:$$apr1$$4vqie50r$$YQAmQdtmz5n9rEALhxJ4l.
       traefik.http.routers.traefik.entrypoints: https
       traefik.http.routers.traefik.middlewares: traefik-auth
-      traefik.http.routers.traefik.rule: Host(`traefik`)
+      traefik.http.routers.traefik.rule: Host(`traefik.opencloud.test`)
       traefik.http.routers.traefik.service: api@internal
       traefik.http.routers.traefik.tls.certresolver: letsencrypt
     logging:
@@ -187,22 +143,24 @@ services:
     networks:
       opencloud-net:
         aliases:
-          - opencloud
-          - collabora
-          - wopiserver
+          - cloud.opencloud.test
+          - collabora.opencloud.test
     ports:
       - 80:80
       - 443:443
     restart: always
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      # - type: volume
-      #   source: certs
-      #   target: /certs
-      #   volume: {}
 
   tika:
-    image: apache/tika:3.2.0.0-full@sha256:62e24c820c0be460bc8297c05e0c98b9aee1df3fde51aa950af53cc0ec62b9f4
+    image: apache/tika:4.1.0-full@sha256:ab9cc988828c594d32d6409e1850d1c8d83152ea793ef5fe0e7862ac0f9e5891
+    # String form, because GMT passes the test to docker run --health-cmd (CMD-SHELL)
+    # start_interval polls during boot. The long interval keeps the probe from running during the measurement.
+    healthcheck:
+      test: wget -q -O /dev/null http://127.0.0.1:9998/tika || exit 1
+      start_period: 300s
+      start_interval: 2s
+      interval: 3600s
     networks:
       opencloud-net:
     restart: always
@@ -212,10 +170,3 @@ services:
 networks:
   opencloud-net:
     name: opencloud-compose_opencloud-net
-volumes:
-  # certs:
-  #   name: opencloud-compose_certs
-  opencloud-config:
-    name: opencloud-compose_opencloud-config
-  # opencloud-data:
-  #   name: opencloud-compose_opencloud-data

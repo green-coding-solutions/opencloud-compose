@@ -11,9 +11,9 @@ import string
 
 from playwright.sync_api import Playwright, sync_playwright, expect
 
-from helper_functions import log_note, get_random_text, login, timeout_handler, user_sleep
+from helper_functions import log_note, get_random_text, login, timeout_handler, user_sleep, NEW_BUTTON, resource_link
 
-DOMAIN = 'https://opencloud'
+DOMAIN = 'https://cloud.opencloud.test'
 
 DOWNLOAD_DIR = '/tmp/repo-copy/downloads/'
 
@@ -47,9 +47,10 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
         user_sleep()
         page.wait_for_selector('a[data-nav-name="admin-settings-spaces"]')
         page.click('a[data-nav-name="admin-settings-spaces"]')
+        page.wait_for_url('**/admin-settings/spaces**')
 
-        page.wait_for_selector('#new-space-menu-btn')
-        page.click('#new-space-menu-btn')
+        page.wait_for_selector(NEW_BUTTON)
+        page.click(NEW_BUTTON)
 
         new_space_name = ''.join(random.choices(string.ascii_letters, k=5))
 
@@ -106,9 +107,8 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
             }
             all_file_payloads.append(file_payload)
 
-        page.wait_for_selector('button#upload-menu-btn')
-        page.wait_for_selector('button#upload-menu-btn')
-        page.click('button#upload-menu-btn')
+        page.wait_for_selector(NEW_BUTTON)
+        page.click(NEW_BUTTON)
 
         with page.expect_file_chooser() as fc_info:
             file_upload_button_selector = '#files-file-upload-button'
@@ -120,7 +120,7 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
 
         user_sleep(5)
 
-        page.get_by_role("button", name="Sort by name").click()
+        # The default tiles view is already sorted by name
 
         log_note("- Vorschau (Preview-Service) der Bilder")
         for filename in sorted(random_filenames.values()):
@@ -135,7 +135,7 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
 
         log_note("- Löschen aller Dateien - Leeren des Papierkorbs")
 
-        select_all_checkbox_selector = 'input#resource-table-select-all[type="checkbox"]'
+        select_all_checkbox_selector = 'input#tiles-view-select-all[type="checkbox"]'
         page.wait_for_selector(select_all_checkbox_selector, state='visible')
         page.click(select_all_checkbox_selector)
 
@@ -151,7 +151,7 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
 
         user_sleep()
 
-        selector = f"a.trash-bin-route:has-text('{new_space_name}')"
+        selector = resource_link(new_space_name)
         page.wait_for_selector(selector, state='visible')
         page.click(selector)
 

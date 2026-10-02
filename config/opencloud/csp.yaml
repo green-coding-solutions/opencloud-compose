@@ -8,6 +8,8 @@ directives:
     - 'wss://${COMPANION_DOMAIN|companion.opencloud.test}/'
     - 'https://raw.githubusercontent.com/opencloud-eu/awesome-apps/'
     - 'https://${IDP_DOMAIN|keycloak.opencloud.test}/'
+    - 'https://update.opencloud.eu/'
+    - 'https://tile.openstreetmap.org/'
   default-src:
     - '''none'''
   font-src:
@@ -20,15 +22,19 @@ directives:
     - 'https://embed.diagrams.net/'
     # In contrary to bash and docker the default is given after the | character
     - 'https://${COLLABORA_DOMAIN|collabora.opencloud.test}/'
+    - 'https://${EURO_OFFICE_DOMAIN|euro-office.opencloud.test}/'
     # This is needed for the external-sites web extension when embedding sites
     - 'https://docs.opencloud.eu'
+    - 'https://${IDP_DOMAIN|keycloak.opencloud.test}/'
   img-src:
     - '''self'''
     - 'data:'
     - 'blob:'
     - 'https://raw.githubusercontent.com/opencloud-eu/awesome-apps/'
+    - 'https://tile.openstreetmap.org/'
     # In contrary to bash and docker the default is given after the | character
     - 'https://${COLLABORA_DOMAIN|collabora.opencloud.test}/'
+    - 'https://${EURO_OFFICE_DOMAIN|euro-office.opencloud.test}/'
   manifest-src:
     - '''self'''
   media-src:
@@ -39,6 +45,11 @@ directives:
   script-src:
     - '''self'''
     - '''unsafe-inline'''
+    - 'https://${IDP_DOMAIN|keycloak.opencloud.test}/'
   style-src:
     - '''self'''
     - '''unsafe-inline'''
+    - 'blob:'
+  worker-src:
+    - "'self'"
+    - 'blob:'

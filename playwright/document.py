@@ -16,9 +16,9 @@ import os
 from playwright.sync_api import Playwright, sync_playwright, expect
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
-from helper_functions import log_note, get_random_text, login, timeout_handler, user_sleep, wait_and_click
+from helper_functions import log_note, get_random_text, login, timeout_handler, user_sleep, wait_and_click, NEW_BUTTON
 
-DOMAIN = 'https://opencloud'
+DOMAIN = 'https://cloud.opencloud.test'
 WRITE_DELAY = 0#1
 
 text = ['# The Hitchhiker’s Guide to the Galaxy\n\n “The story so far: In the beginning the Universe was created. This has made a lot of people very angry and been widely regarded as a bad move.”\n — Douglas Adams', '\n\n## Overview \n\n *The Hitchhiker’s Guide to the Galaxy* is a comedic science fiction franchise created by Douglas Adams. It began as a BBC radio series and was later adapted into novels, a television series, stage plays, comic books, a computer game, and a feature film.', '\n\n## Series Reading Order \n\n1. **The Hitchhiker’s Guide to the Galaxy**\n2. **The Restaurant at the End of the Universe**\n3. **Life, the Universe and Everything**\n4. **So Long, and Thanks for All the Fish**\n5. **Mostly Harmless**\n\n *Note: The series is often humorously referred to as a "trilogy in five parts."*', '\n\n## Key Characters \n\n- **Arthur Dent**: The bewildered human protagonist.\n- **Ford Prefect**: Arthur’s alien friend and researcher for the Guide.\n- **Zaphod Beeblebrox**: Two-headed, eccentric ex-President of the Galaxy.\n- **Trillian (Tricia McMillan)**: The only other human survivor.\n- **Marvin the Paranoid Android**: A depressed robot with a "brain the size of a planet."', '\n\n## Important Concepts\n\n- **Don’t Panic**: The cover of the Guide is emblazoned with these reassuring words.\n- **Towel**: The most massively useful thing an interstellar hitchhiker can have.\n- **Answer to the Ultimate Question**: 42.\n- **Vogon Poetry**: Universally considered the third worst in the universe.', '\n\n## Origins and Adaptations \n\n- **Radio Series**: The original format, with the first two phases corresponding to the first two books.\n- **Novels**: Five main books, with the first two closely following the radio series.\n- **Computer Game**: 1984 interactive fiction game by Infocom, co-written by Adams.']
@@ -143,7 +143,8 @@ def second_user(playwright: Playwright, browser_name: str, headless=False) -> No
 
         log_note("- Einpflegen von weiteren 2 Absätzen Text")
         frame.locator(editor_content_selector).focus()
-        frame.locator('#map').click()
+        # Since Collabora 26.04 the document canvas intercepts pointer events on #map
+        frame.locator('#map').click(force=True)
 
         # log_note("Checking if the text that user1 added is present in the document")
         # frame.page.keyboard.press("Control+A")  # Use "Meta+C" on macOS
@@ -167,7 +168,8 @@ def second_user(playwright: Playwright, browser_name: str, headless=False) -> No
 
         log_note(f"All text blocks added successfully")
 
-        wait_and_click(frame, 'button#save-button')
+        # Since Collabora 26.04 toolbar ids get a running counter (e.g. save4-button), so use the class
+        wait_and_click(frame, 'div.unoSave.no-label > button')
 
         page.close()
         log_note("Close browser")
@@ -217,11 +219,12 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
         user_sleep()
 
         wait_and_click(page, 'a[data-nav-name="admin-settings-users"]')
+        page.wait_for_url('**/admin-settings/users**')
 
         user_sleep()
 
-        page.wait_for_selector('#create-user-btn')
-        page.click('#create-user-btn')
+        page.wait_for_selector(NEW_BUTTON)
+        page.click(NEW_BUTTON)
 
         user_sleep()
 
@@ -244,9 +247,10 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
 
 
         log_note("- Erstellen eines .odt Dokuments")
-        wait_and_click(page, 'button#new-file-menu-btn:has-text("New")')
+        wait_and_click(page, NEW_BUTTON)
 
-        wait_and_click(page, 'button:has-text("OpenDocument")')
+        # The menu entry is called "Document" since OpenCloud 7.2
+        wait_and_click(page, 'button.new-file-btn-odt')
 
 
         new_text_input = page.locator('input[value="New file.odt"]')
@@ -286,7 +290,8 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
         editor_content_selector = '#canvas-container'
         frame.wait_for_selector(editor_content_selector)
         frame.locator(editor_content_selector).focus()
-        frame.locator('#map').click()
+        # Since Collabora 26.04 the document canvas intercepts pointer events on #map
+        frame.locator('#map').click(force=True)
         frame.page.keyboard.press('Control+End')
         frame.page.keyboard.press('Enter')
         frame.page.keyboard.press('Enter')
@@ -300,7 +305,8 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
             user_sleep()
 
         log_note(f"All text blocks added successfully")
-        wait_and_click(frame, 'button#save-button')
+        # Since Collabora 26.04 toolbar ids get a running counter (e.g. save4-button), so use the class
+        wait_and_click(frame, 'div.unoSave.no-label > button')
         wait_and_click(page, 'button#oc-openfile-contextmenu-trigger')
         wait_and_click(page, 'button:has-text("Share")')
 

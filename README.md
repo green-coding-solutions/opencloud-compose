@@ -2,8 +2,10 @@ This is a copy od the OpenCloud compose repo for the evaluation to get the Blue 
 
 For dev you can use the run string:
 ```
-./runner.py --uri PATH_PLEASE_REPLACe/opencloud-compose --name test --allow-unsafe --skip-volume-inspect --dev-no-metrics --dev-no-sleeps --dev-no-phase-stats  --dev-no-optimizations --dev-no-save --skip-system-checks --dev-cache-build --debug
+./runner.py --uri PATH_PLEASE_REPLACe/opencloud-compose --filename usage_scenario_text.yml --name test --allow-unsafe --skip-volume-inspect --dev-no-metrics --dev-no-sleeps --dev-no-phase-stats --skip-optimizations --dev-no-save --dev-no-system-checks --dev-cache-build --debug
 ```
+
+GMT needs its database container running even with `--dev-no-save`.
 
 and then
 
@@ -13,7 +15,18 @@ docker exec -it gcb-playwright /bin/bash
 
 to test the scripts.
 
-For the measurments you will need to add `--allow-unsafe` as we need volumes for the containers to communicate
+For the measurments you will need to add `--allow-unsafe` (or allow list the mounts for the user) as Traefik needs the docker socket and the browser needs `/tmp/.X11-unix`. All other mounts are read only files inside the repo.
+
+## 2026 update (OpenCloud 8)
+
+The 2025 measurements used `opencloud-rolling:3.0.0`. The setup now follows the current upstream opencloud-compose with `opencloud-rolling:8.0.1`:
+
+- The collaboration (WOPI) service runs inside the opencloud process (`OC_ADD_RUN_SERVICES: notifications,collaboration`). There is no separate `collaboration` container and no `wopiserver` host anymore. The shared `opencloud-config` volume is gone, config and data live in the container.
+- The public host names are the upstream defaults `cloud.opencloud.test` and `collabora.opencloud.test`. Before, `opencloud` and `collabora` were also the service/container names, so DNS returned both the container and Traefik. The browser and Go retry the other address, but Collabora does not, so about every second WOPI call from Collabora to `https://opencloud` failed.
+- Collabora 26.04 is distroless. No shell, so no entrypoint override and no `sleep` setup-command. The WOPI proof key is a throwaway key in `config/collabora/proof_key`, mounted read only.
+- Tika and Collabora have healthchecks with a long interval, so the probe runs during boot but not during the measurement.
+- Traefik access log is off (new upstream default). `FRONTEND_CHECK_FOR_UPDATES` is off, so the browser does not call update.opencloud.eu.
+- The Playwright scripts are adapted to the web UI 8: one "New" button for create/upload, tiles as default view, tiptap instead of CodeMirror for markdown and the new trash overview.
 
 # OpenCloud Compose
 

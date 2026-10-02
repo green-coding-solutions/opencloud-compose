@@ -23,7 +23,7 @@ compose-file: !include docker-compose.yml
 
 services:
   gcb-playwright:
-    image: greencoding/gcb_playwright:v19
+    image: greencoding/gcb_playwright:v19@sha256:678efc99ccf761e55a59d4833adac8f92d863c7b2b33e434a97135b39950d188
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
     environment:
@@ -36,9 +36,6 @@ services:
         shell: bash
 
   opencloud:
-    setup-commands:
-      - command: sleep 10
-  collabora:
     setup-commands:
       - command: sleep 10
   traefik:

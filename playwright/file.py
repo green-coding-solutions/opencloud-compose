@@ -22,9 +22,9 @@ import string
 
 from playwright.sync_api import Playwright, sync_playwright, expect
 
-from helper_functions import log_note, get_random_text, login, timeout_handler, user_sleep
+from helper_functions import log_note, get_random_text, login, timeout_handler, user_sleep, NEW_BUTTON, resource_link, context_menu_button
 
-DOMAIN = 'https://opencloud'
+DOMAIN = 'https://cloud.opencloud.test'
 
 GB_FILE_PATH = '/tmp/repo-copy/downloads/largefile.bin'
 HASH_FILE = '/tmp/repo-copy/downloads/hashes.txt'
@@ -99,10 +99,7 @@ def second_user(playwright: Playwright, browser_name: str, headless=False) -> No
 
         page.click('a[data-nav-name="files-shares"]')
 
-        context_menu_button_selector = (
-            f'tr:has(span.oc-resource-name[data-test-resource-name="{LARGE_FILE_NAME}"]) '
-            'button[aria-label="Show context menu"]'
-        )
+        context_menu_button_selector = context_menu_button(LARGE_FILE_NAME)
 
         download_button_selector = (
             'button.oc-files-actions-download-file-trigger:has-text("Download")'
@@ -133,10 +130,7 @@ def second_user(playwright: Playwright, browser_name: str, headless=False) -> No
                 raise FileNotFoundError(f"Large file download failed at {downloaded_large_file_path}")
             user_sleep()
 
-        context_menu_button_selector = (
-            f'tr:has(span.oc-resource-name[data-test-resource-name="{MOBY_FILE_NAME}"]) '
-            'button[aria-label="Show context menu"]'
-        )
+        context_menu_button_selector = context_menu_button(MOBY_FILE_NAME)
 
         download_button_selector = (
             'button.oc-files-actions-download-file-trigger:has-text("Download")'
@@ -219,11 +213,12 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
 
         page.wait_for_selector('a[data-nav-name="admin-settings-users"]')
         page.click('a[data-nav-name="admin-settings-users"]')
+        page.wait_for_url('**/admin-settings/users**')
 
         user_sleep()
 
-        page.wait_for_selector('#create-user-btn')
-        page.click('#create-user-btn')
+        page.wait_for_selector(NEW_BUTTON)
+        page.click(NEW_BUTTON)
 
         user_sleep()
 
@@ -246,8 +241,9 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
 
         user_sleep()
 
-        page.wait_for_selector('#new-space-menu-btn')
-        page.click('#new-space-menu-btn')
+        page.wait_for_url('**/admin-settings/spaces**')
+        page.wait_for_selector(NEW_BUTTON)
+        page.click(NEW_BUTTON)
 
         user_sleep()
 
@@ -272,8 +268,8 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
 
         user_sleep()
 
-        page.wait_for_selector('button#upload-menu-btn')
-        page.click('button#upload-menu-btn')
+        page.wait_for_selector(NEW_BUTTON)
+        page.click(NEW_BUTTON)
 
         user_sleep()
 
@@ -290,13 +286,13 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
 
             file_chooser.set_files(large_file_path)
 
-        page.wait_for_selector('div.upload-info-label.upload-info-success:has-text("1 item uploaded")', state='visible')
+        page.wait_for_selector('div.upload-info-label.upload-info-success:has-text("1 file uploaded")', state='visible')
         page.wait_for_selector('span.oc-resource-name[data-test-resource-name="' + LARGE_FILE_NAME + '"]')
 
         log_note("- Hochladen einer PDF-Datei")
 
-        page.wait_for_selector('button#upload-menu-btn')
-        page.click('button#upload-menu-btn')
+        page.wait_for_selector(NEW_BUTTON)
+        page.click(NEW_BUTTON)
 
 
         with open(MOBY_FILE_PATH, 'rb') as f:
@@ -323,11 +319,9 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
 
         log_note('- Sharen beider Dateien an weiteren User ')
 
-        moby_share_button_selector = (
-            f'tr:has(span.oc-resource-name[data-test-resource-name="{MOBY_FILE_NAME}"]) '
-            'button[aria-label="Share"]'
-        )
-        page.click(moby_share_button_selector)
+        # The tiles view has no share quick action, so share via the context menu
+        page.click(context_menu_button(MOBY_FILE_NAME))
+        page.click('button.oc-files-actions-show-shares-trigger')
 
         user_sleep()
 
@@ -350,11 +344,9 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
         page.wait_for_selector(f'span.files-collaborators-collaborator-name:has-text("' + USER2['username_long'] +'")')
 
 
-        large_share_button_selector = (
-            f'tr:has(span.oc-resource-name[data-test-resource-name="{LARGE_FILE_NAME}"]) '
-            'button[aria-label="Share"]'
-        )
-        page.click(large_share_button_selector)
+        # The tiles view has no share quick action, so share via the context menu
+        page.click(context_menu_button(LARGE_FILE_NAME))
+        page.click('button.oc-files-actions-show-shares-trigger')
 
         page.wait_for_selector('#files-share-invite-input')
 
@@ -379,10 +371,7 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
 
 
         log_note("- Löschen aller Dateien - Leeren des Papierkorbs")
-        context_menu_button_selector = (
-            f'tr:has(span.oc-resource-name[data-test-resource-name="{LARGE_FILE_NAME}"]) '
-            'button[aria-label="Show context menu"]'
-        )
+        context_menu_button_selector = context_menu_button(LARGE_FILE_NAME)
 
         delete_button_selector = (
                 'li.context-menu:has(button:has-text("Delete"))'
@@ -398,10 +387,7 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
 
         user_sleep()
 
-        context_menu_button_selector = (
-            f'tr:has(span.oc-resource-name[data-test-resource-name="{MOBY_FILE_NAME}"]) '
-            'button[aria-label="Show context menu"]'
-        )
+        context_menu_button_selector = context_menu_button(MOBY_FILE_NAME)
 
         page.wait_for_selector(context_menu_button_selector, state='visible')
         page.click(context_menu_button_selector)
@@ -415,7 +401,7 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
 
         page.click('a[data-nav-name="files-trash-overview"]')
 
-        selector = 'a.trash-bin-route:has-text("Personal")'
+        selector = resource_link("Personal")
         page.wait_for_selector(selector, state='visible')
         page.click(selector)
 
