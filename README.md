@@ -27,6 +27,7 @@ The 2025 measurements used `opencloud-rolling:3.0.0`. The setup now follows the 
 - Tika and Collabora have healthchecks with a long interval, so the probe runs during boot but not during the measurement.
 - Traefik access log is off (new upstream default). `FRONTEND_CHECK_FOR_UPDATES` is off, so the browser does not call update.opencloud.eu.
 - The Playwright scripts are adapted to the web UI 8: one "New" button for create/upload, tiles as default view, tiptap instead of CodeMirror for markdown and the new trash overview.
+- The browser container uses the official `mcr.microsoft.com/playwright/python:v1.63.0-noble` image instead of `greencoding/gcb_playwright:v19`. The image already contains Firefox, so a setup-command only installs `playwright==1.63.0` with pip. When you bump the image tag, bump the pip version with it.
 
 # OpenCloud Compose
 

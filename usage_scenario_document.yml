@@ -16,7 +16,9 @@ compose-file: !include docker-compose.yml
 
 services:
   gcb-playwright:
-    image: greencoding/gcb_playwright:v19@sha256:678efc99ccf761e55a59d4833adac8f92d863c7b2b33e434a97135b39950d188
+    # Official Playwright Python image. Firefox is already in /ms-playwright, only the Python package is missing.
+    # Keep the pip version below equal to the image tag, otherwise playwright looks for other browser builds.
+    image: mcr.microsoft.com/playwright/python:v1.63.0-noble@sha256:72bd171a9ffc2b4b59532aaa6210e21014d07093120dc25528870c0b840da1f0
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
     environment:
@@ -27,6 +29,7 @@ services:
       - command: cp -r /tmp/repo /tmp/repo-copy
       - command: cd /tmp/repo-copy/downloads && bash make-equivalent-bash.sh
         shell: bash
+      - command: pip install --root-user-action=ignore playwright==1.63.0
 
   opencloud:
     setup-commands:
