@@ -15,6 +15,9 @@ services:
       - /tmp/.X11-unix:/tmp/.X11-unix
     environment:
        DISPLAY: ":0"
+       # Firefox uses the GMT cluster proxy from the environment. See the comment at collabora in docker-compose.yml
+       NO_PROXY: collabora,opencloud,traefik,tika,gcb-playwright,127.0.0.1,localhost,cloud.opencloud.test,collabora.opencloud.test,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+       no_proxy: collabora,opencloud,traefik,tika,gcb-playwright,127.0.0.1,localhost,cloud.opencloud.test,collabora.opencloud.test,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
     networks:
       opencloud-net:
     setup-commands: # moving repo so we can create files there (is read only)

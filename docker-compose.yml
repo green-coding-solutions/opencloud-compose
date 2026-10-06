@@ -9,6 +9,12 @@ services:
       extra_params: --o:ssl.enable=false --o:ssl.ssl_verification=false --o:ssl.termination=true --o:welcome.enable=false --o:net.frame_ancestors=cloud.opencloud.test --o:net.lok_allow.host[14]=cloud.opencloud.test --o:home_mode.enable=false
       password: admin
       username: admin
+      # GMT cluster machines send container traffic through a proxy (network_connections_proxy_container) and only exempt the service names.
+      # The public host names are network aliases on traefik, so they have to be exempt as well. Otherwise the proxy fails to resolve them.
+      # The private ranges cover the container IPs (the docker network subnet differs per machine).
+      # These entries come after the ones GMT sets and win. Keep the list equal in all services.
+      NO_PROXY: collabora,opencloud,traefik,tika,gcb-playwright,127.0.0.1,localhost,cloud.opencloud.test,collabora.opencloud.test,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+      no_proxy: collabora,opencloud,traefik,tika,gcb-playwright,127.0.0.1,localhost,cloud.opencloud.test,collabora.opencloud.test,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
     # No test here. GMT turns test into --health-cmd, which runs through /bin/sh and that does not exist in the image.
     # Without test docker keeps the image healthcheck (coolwsd --probe --use-env-vars).
     # start_interval polls during boot. The long interval keeps the probe from running during the measurement.
@@ -89,6 +95,9 @@ services:
       COLLABORATION_APP_ICON: https://collabora.opencloud.test/favicon.ico
       COLLABORATION_APP_INSECURE: "true"
       COLLABORATION_CS3API_DATAGATEWAY_INSECURE: "true"
+      # See collabora. Keeps calls to the public host names (OIDC, WOPI, collabora discovery) and to tika off the GMT proxy
+      NO_PROXY: collabora,opencloud,traefik,tika,gcb-playwright,127.0.0.1,localhost,cloud.opencloud.test,collabora.opencloud.test,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+      no_proxy: collabora,opencloud,traefik,tika,gcb-playwright,127.0.0.1,localhost,cloud.opencloud.test,collabora.opencloud.test,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
     image: opencloudeu/opencloud-rolling:8.0.1@sha256:1e78144071ab3fc20d2533dd4c5709d24b7e1669c96439fdf7c73cb2808a5d5e
     labels:
       traefik.enable: "true"
@@ -129,6 +138,10 @@ services:
       - --accessLog=false
       - --accessLog.format=json
       - --accessLog.fields.headers.names.X-Request-Id=keep
+    # See collabora. Traefik forwards to the container IPs, so the private ranges must be in the list for traefik
+    environment:
+      NO_PROXY: collabora,opencloud,traefik,tika,gcb-playwright,127.0.0.1,localhost,cloud.opencloud.test,collabora.opencloud.test,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+      no_proxy: collabora,opencloud,traefik,tika,gcb-playwright,127.0.0.1,localhost,cloud.opencloud.test,collabora.opencloud.test,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
     image: traefik:v3.7.13@sha256:24841fe2de7304c149343d877d2923b4c8800a38ba015dea9174c23b20e344a0
     labels:
       traefik.enable: "false"
