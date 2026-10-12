@@ -16,6 +16,10 @@ services:
     # Official Playwright Python image. Firefox is already in /ms-playwright, only the Python package is missing.
     # Keep the pip version below equal to the image tag, otherwise playwright looks for other browser builds.
     image: mcr.microsoft.com/playwright/python:v1.63.0-noble@sha256:72bd171a9ffc2b4b59532aaa6210e21014d07093120dc25528870c0b840da1f0
+    # Playwright with Firefox keeps every request and response body in memory. For the 1 GB file of the File scenario that is about 4 GB.
+    # Since 12/2025 GMT splits the host memory evenly between the containers (2.68 GB each on machine 12) and the OOM killer stops the driver.
+    # The runs from 2025 had no limits at all. Keep the same value in all scenarios so the setup stays identical.
+    mem_limit: 6G
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
     environment:
