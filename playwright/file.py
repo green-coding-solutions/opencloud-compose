@@ -286,7 +286,8 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
 
             file_chooser.set_files(large_file_path)
 
-        page.wait_for_selector('div.upload-info-label.upload-info-success:has-text("1 file uploaded")', state='visible')
+        # The 1 GB upload takes 25 to 30s on machine 12, too close to the default timeout of 30s
+        page.wait_for_selector('div.upload-info-label.upload-info-success:has-text("1 file uploaded")', state='visible', timeout=300_000)
         page.wait_for_selector('span.oc-resource-name[data-test-resource-name="' + LARGE_FILE_NAME + '"]')
 
         log_note("- Hochladen einer PDF-Datei")
