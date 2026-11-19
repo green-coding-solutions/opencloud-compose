@@ -81,6 +81,7 @@ def run(playwright: Playwright, browser_name: str, headless=False) -> None:
             page.type(editor_content_selector, wysiwyg_keystrokes(t), delay=1)
             user_sleep()
             wait_and_click(page, 'button#app-save-action')
+            user_sleep()
             wait_and_click(page, 'button#app-top-bar-close')
             user_sleep()
 
